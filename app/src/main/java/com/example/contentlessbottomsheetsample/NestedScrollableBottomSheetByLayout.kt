@@ -1,5 +1,6 @@
 package com.example.contentlessbottomsheetsample
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.*
@@ -19,48 +20,115 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-private fun NestedScrollableBottomSheetByLayout() {
+fun NestedScrollableBottomSheetByLayout() {
     val bottomSheetHeight = 200.dp
     val bottomSheetHeightPx = with(LocalDensity.current) { bottomSheetHeight.toPx() }
     val swipeableState = rememberSwipeableState(initialValue = BottomSheetSwipeableState.COLLAPSED)
     val peekHeightPx = with(LocalDensity.current) { 60.dp.toPx() }
+    val scrollState = rememberScrollState()
+
+    Log.d("bottomsheet", "offset = ${swipeableState.offset.value.roundToInt()}")
 
     Layout(content = {
-        Column(modifier = Modifier
-            .background(Color.Red)
-            .swipeable(
-                state = swipeableState,
-                anchors = mapOf(
-                    (peekHeightPx - bottomSheetHeightPx) to BottomSheetSwipeableState.COLLAPSED,
-                    0f to BottomSheetSwipeableState.EXPANDED
-                ),
-                orientation = Orientation.Vertical,
-                reverseDirection = true
-            )
-            .fillMaxWidth()
-            .height(bottomSheetHeight)
-            .verticalScroll(rememberScrollState())
-//            .nestedScroll(object : NestedScrollConnection {
-//                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-//                    return Offset.Zero
-//                }
-//            })
+        Box(
+            modifier = Modifier
+                .background(Color.Red)
+                .swipeable(
+                    state = swipeableState,
+                    anchors = mapOf(
+                        (peekHeightPx - bottomSheetHeightPx) to BottomSheetSwipeableState.COLLAPSED,
+                        0f to BottomSheetSwipeableState.EXPANDED
+                    ),
+                    orientation = Orientation.Vertical,
+                    reverseDirection = true
+                )
+                .nestedScroll(object : NestedScrollConnection {
+                    override fun onPreScroll(
+                        available: Offset,
+                        source: NestedScrollSource
+                    ): Offset {
+                        val delta = available.toFloat()
+                        return if (delta < 0 && source == NestedScrollSource.Drag) {
+                            -swipeableState
+                                .performDrag(-delta)
+                                .toOffset()
+                        } else {
+                            Offset.Zero
+                        }
+                    }
+
+                    override fun onPostScroll(
+                        consumed: Offset,
+                        available: Offset,
+                        source: NestedScrollSource
+                    ): Offset {
+                        return if (source == NestedScrollSource.Drag) {
+                            -swipeableState
+                                .performDrag(-available.toFloat())
+                                .toOffset()
+                        } else {
+                            Offset.Zero
+                        }
+                    }
+
+                    override suspend fun onPreFling(available: Velocity): Velocity {
+                        val toFling = Offset(available.x, available.y).toFloat()
+                        return if (toFling < 0 && swipeableState.offset.value > Float.NEGATIVE_INFINITY) {
+                            swipeableState.performFling(velocity = toFling)
+                            available
+                        } else {
+                            Velocity.Zero
+                        }
+                    }
+
+                    override suspend fun onPostFling(
+                        consumed: Velocity,
+                        available: Velocity
+                    ): Velocity {
+                        swipeableState.performFling(
+                            velocity = Offset(
+                                available.x,
+                                available.y
+                            ).toFloat()
+                        )
+                        return available
+                    }
+
+                    private fun Float.toOffset(): Offset = Offset(0f, this)
+
+                    private fun Offset.toFloat(): Float = this.y
+                })
+                .fillMaxWidth()
+                .height(bottomSheetHeight)
         ) {
-            repeat(10) {
-                Text(text = "this is text$it", modifier = Modifier
-                    .padding(8.dp)
-                    .fillMaxWidth())
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .verticalScroll(scrollState)
+            ) {
+                repeat(10) {
+                    Text(
+                        text = "this is text$it", modifier = Modifier
+                            .padding(8.dp)
+                            .fillMaxWidth()
+                    )
+                }
             }
         }
     }) { measurables, constraints ->
         val boxPlaceable = measurables.first().measure(constraints)
         layout(width = constraints.maxWidth, height = constraints.maxHeight) {
-            boxPlaceable.place(0, constraints.maxHeight - bottomSheetHeightPx.roundToInt() - swipeableState.offset.value.roundToInt())
+            boxPlaceable.place(
+                0,
+                constraints.maxHeight - bottomSheetHeightPx.roundToInt() - swipeableState.offset.value.roundToInt()
+            )
         }
     }
 }

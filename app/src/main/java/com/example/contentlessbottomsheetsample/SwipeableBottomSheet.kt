@@ -48,8 +48,8 @@ fun SwipeableBottomSheet() {
                     reverseDirection = true
                 )
                 .fillMaxWidth()
-                .wrapContentHeight()
-            , contentAlignment = Alignment.BottomEnd
+                .wrapContentHeight(),
+            contentAlignment = Alignment.BottomEnd
         ) {
             Box(
                 modifier = Modifier
@@ -65,4 +65,41 @@ fun SwipeableBottomSheet() {
 @Composable
 private fun SwipeableBottomSheetPreview() {
     SwipeableBottomSheet()
+}
+
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+private fun SimpleSwipeable() {
+    val swipeableState = rememberSwipeableState(
+        initialValue = BottomSheetSwipeableState.COLLAPSED
+    )
+
+    val peekHeightPx = with(LocalDensity.current) { 60.dp.toPx() }
+    val sheetHeight = 200.dp
+    val sheetHeightPx = with(LocalDensity.current) { sheetHeight.toPx() }
+    Box(
+        contentAlignment = Alignment.BottomCenter,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .swipeable(
+                state = swipeableState,
+                anchors = mapOf(
+                    (peekHeightPx - sheetHeightPx) to BottomSheetSwipeableState.COLLAPSED,
+                    0f to BottomSheetSwipeableState.EXPANDED
+                ),
+                orientation = Orientation.Vertical,
+                reverseDirection = true
+            )
+            .offset {
+                IntOffset(0, -swipeableState.offset.value.roundToInt())
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .background(Color.Red)
+                .fillMaxWidth()
+                .height(sheetHeight)
+        )
+    }
 }

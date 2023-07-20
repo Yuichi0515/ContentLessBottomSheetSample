@@ -29,7 +29,7 @@ private fun RootScreen() {
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colors.background
     ) {
-        SwipeableBottomSheet()
+        NestedScrollableBottomSheetByLayout()
     }
 }
 
